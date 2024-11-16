@@ -1,0 +1,367 @@
+# See how to use truecharts common: https://truecharts.org/common
+
+httpRoute:
+  enabled: true
+  hostname: notesnook.domain.com
+  parentRef:
+  - kind: Gateway
+    name: private-gateway
+    namespace: istio-system
+
+image:
+  repository: streetwriters/notesnook-sync
+  tag: "v1.0-beta.1"
+  pullPolicy: IfNotPresent
+
+identityServer:
+  repository: streetwriters/identity
+  tag: "v1.0-beta.1"
+  pullPolicy: IfNotPresent
+
+sseServer:
+  repository: streetwriters/sse
+  tag: "v1.0-beta.1"
+  pullPolicy: IfNotPresent
+
+monographServer:
+  repository: streetwriters/monograph
+  tag: "1.1.0"
+  pullPolicy: IfNotPresent
+
+
+workload:
+  main:
+    enabled: true
+    primary: true
+    replicas: 1
+    type: Deployment
+    podSpec:
+      containers:
+        main:
+          enabled: true
+          primary: true
+          name: notesnook
+          imageSelector: image
+          resources: {}
+          probes:
+            liveness:
+              enabled: true
+              type: http
+              port: 5264
+              path: "/health"
+            readiness:
+              enabled: true
+              type: http
+              port: 5264
+              path: "/health"
+            startup:
+              enabled: true
+              type: http
+              port: 5264
+              path: "/health"
+          envFrom:
+          - secretRef:
+              name: env
+              optional: false
+          - secretRef:
+              name: main-server-env
+              optional: false
+  identity:
+    enabled: true
+    replicas: 1
+    type: Deployment
+    podSpec:
+      containers:
+        main:
+          enabled: true
+          primary: true
+          name: identity
+          imageSelector: identityServer
+          resources: {}
+          probes:
+            liveness:
+              enabled: true
+              type: http
+              port: 8264
+              path: "/health"
+            readiness:
+              enabled: true
+              type: http
+              port: 8264
+              path: "/health"
+            startup:
+              enabled: true
+              type: http
+              port: 8264
+              path: "/health"
+          envFrom:
+          - secretRef:
+              name: env
+              optional: false
+          - secretRef:
+              name: identity-env
+              optional: false
+  sse:
+    enabled: true
+    replicas: 1
+    type: Deployment
+    podSpec:
+      containers:
+        main:
+          enabled: true
+          primary: true
+          name: sse
+          imageSelector: sseServer
+          resources: {}
+          probes:
+            liveness:
+              enabled: true
+              type: http
+              port: 7264
+              path: "/health"
+            readiness:
+              enabled: true
+              type: http
+              port: 7264
+              path: "/health"
+            startup:
+              enabled: true
+              type: http
+              port: 7264
+              path: "/health"
+          envFrom:
+          - secretRef:
+              name: env
+              optional: false
+  monograph:
+    enabled: true
+    replicas: 1
+    type: Deployment
+    podSpec:
+      containers:
+        main:
+          enabled: true
+          primary: true
+          name: monograph
+          imageSelector: monographServer
+          resources: {}
+          probes:
+            liveness:
+              enabled: true
+              type: http
+              port: 3000
+              path: "/health"
+            readiness:
+              enabled: true
+              type: http
+              port: 3000
+              path: "/health"
+            startup:
+              enabled: true
+              type: http
+              port: 3000
+              path: "/health"
+          envFrom:
+          - secretRef:
+              name: env
+              optional: false
+          - secretRef:
+              name: monograph-server
+              optional: false
+
+# Name ports with http- prefix for istio
+service:
+  main:
+    enabled: true
+    primary: true
+    type: ClusterIP
+    targetSelector: main
+    ports:
+      main:
+        enabled: false
+        primary: false
+      http-main:
+        enabled: true
+        primary: true
+        port: 5264
+        protocol: http
+  identity:
+    enabled: true
+    type: ClusterIP
+    targetSelector: identity
+    ports:
+      main:
+        enabled: false
+        primary: false
+      http-main:
+        enabled: true
+        primary: true
+        port: 8264
+        protocol: http
+  sse:
+    enabled: true
+    type: ClusterIP
+    targetSelector: sse
+    ports:
+      main:
+        enabled: false
+        primary: false
+      http-main:
+        enabled: true
+        primary: true
+        port: 7264
+        protocol: http
+  monograph:
+    enabled: true
+    type: ClusterIP
+    targetSelector: monograph
+    ports:
+      main:
+        enabled: false
+        primary: false
+      http-main:
+        enabled: true
+        primary: true
+        port: 3000
+        protocol: http
+
+secret:
+  env:
+    enabled: true
+    type: secret
+    data:
+      NOTESNOOK_SERVER_PORT: "5264"
+      NOTESNOOK_SERVER_HOST: "{{ .Release.Name }}.svc.cluster.local"
+      IDENTITY_SERVER_PORT: "8264"
+      IDENTITY_SERVER_HOST: "{{ .Release.Name }}-identity.svc.cluster.local"
+      SSE_SERVER_PORT: "7264"
+      SSE_SERVER_HOST: "{{ .Release.Name }}-sse.svc.cluster.local"
+      SELF_HOSTED: "1"
+      IDENTITY_SERVER_URL: "https://{{ .Values.httpRoute.hostname }}/identity"
+      NOTESNOOK_APP_HOST: "https://{{ .Values.httpRoute.hostname }}"
+      INSTANCE_NAME: self-hosted-notesnook-domain
+      NOTESNOOK_API_SECRET: ""
+      DISABLE_SIGNUPS: "false"
+      # SMTP_USERNAME: ""
+      # SMTP_PASSWORD: ""
+      # SMTP_HOST: ""
+      # SMTP_PORT: ""
+      # TWILIO_ACCOUNT_SID: ""
+      # TWILIO_AUTH_TOKEN: ""
+      # TWILIO_SERVICE_SID: ""
+      NOTESNOOK_CORS_ORIGINS: https://{{ .Values.httpRoute.hostname }}
+      NOTESNOOK_APP_PUBLIC_URL: https://{{ .Values.httpRoute.hostname }}
+      MONOGRAPH_PUBLIC_URL: https://{{ .Values.httpRoute.hostname }}/monograph
+      AUTH_SERVER_PUBLIC_URL: https://{{ .Values.httpRoute.hostname }}/identity
+      ATTACHMENTS_SERVER_PUBLIC_URL: https://minio-api.domain.com
+      MINIO_ROOT_USER: notesnook
+      MINIO_ROOT_PASSWORD: ""
+  identity-env:
+    enabled: true
+    type: secret
+    data:
+      MONGODB_CONNECTION_STRING: 'mongodb://notesnook:mongo-password@{{ .Release.Name }}-mongo-mongodb-headless.svc.cluster.local/notesnook-identity?authSource=notesnook-identity'
+      MONGODB_DATABASE_NAME: notesnook-identity
+  main-server-env:
+    enabled: true
+    type: secret
+    data:  
+      MONGODB_CONNECTION_STRING: 'mongodb://notesnook:mongo-password@{{ .Release.Name }}-mongo-mongodb-headless.svc.cluster.local/notesnook?authSource=notesnook&readPreference=secondaryPreferred'
+      MONGODB_DATABASE_NAME: notesnook
+      S3_INTERNAL_SERVICE_URL: "https://minio-api.domain.com"
+      S3_INTERNAL_BUCKET_NAME: "notesnook"
+      S3_ACCESS_KEY_ID: "notesnook"
+      S3_ACCESS_KEY: ""
+      S3_SERVICE_URL: "https://minio-api.domain.com"
+      S3_REGION: "us-east-1"
+      S3_BUCKET_NAME: "notesnook"
+  monograph-server:
+    enabled: true
+    type: secret
+    data: 
+      API_HOST: https://{{ .Values.httpRoute.hostname }}
+      PUBLIC_URL: https://{{ .Values.httpRoute.hostname }}/monograph
+
+persistence:
+  identity-keystore:
+    enabled: true
+    type: emptyDir
+    size: 50Mi
+    targetSelector:
+      identity:
+        main:
+          mountPath: /app/keystore
+  main-logs:
+    enabled: true
+    type: emptyDir
+    size: 50Mi
+    targetSelector:
+      main:
+        main:
+          mountPath: /app/logs
+  identity-logs:
+    enabled: true
+    type: emptyDir
+    size: 50Mi
+    targetSelector:
+      identity:
+        main:
+          mountPath: /app/logs
+  identity-sync:
+    enabled: true
+    type: emptyDir
+    size: 50Mi
+    targetSelector:
+      identity:
+        main:
+          mountPath: /app/sync
+  monograph-logs:
+    enabled: true
+    type: emptyDir
+    size: 50Mi
+    targetSelector:
+      monograph:
+        main:
+          mountPath: /app/logs
+  monograph-sync:
+    enabled: true
+    type: emptyDir
+    size: 50Mi
+    targetSelector:
+      monograph:
+        main:
+          mountPath: /app/sync
+  main-sync:
+    enabled: true
+    type: emptyDir
+    size: 50Mi
+    targetSelector:
+      main:
+        main:
+          mountPath: /app/sync
+
+
+# https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
+mongo:
+  enabled: true
+  architecture: standalone
+  replicaCount: 1
+  auth:
+    rootPassword: ''
+    replicaSetKey: ''
+  usernames:
+  - notesnook
+  - notesnook
+  passwords:
+  - 'mongo-password'
+  - 'mongo-password'
+  databases:
+  - notesnook
+  - notesnook-identity
+  resources: {}
+  updateStrategy:
+    type: Recreate
+  persistence:
+    enabled: true
+    storageClass: storage-class
+    size: 30Gi

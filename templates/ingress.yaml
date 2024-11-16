@@ -1,0 +1,53 @@
+{{- if .Values.httpRoute.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: notesnook
+spec:
+  parentRefs: {{ .Values.httpRoute.parentRef | toYaml | nindent 4 }}
+  hostnames:
+  - {{ .Values.httpRoute.hostname }}
+  rules:
+  - backendRefs:
+    - name: {{ .Release.Name }}-monograph
+      port: 3000
+    matches:
+    - path:
+        type: PathPrefix
+        value: /monograph
+    filters:
+      - type: URLRewrite
+        urlRewrite:
+          path:
+            type: ReplacePrefixMatch
+            replacePrefixMatch: /
+  - backendRefs:
+    - name: {{ .Release.Name }}-sse
+      port: 7264
+    matches:
+    - path:
+        type: PathPrefix
+        value: /sse
+    filters:
+      - type: URLRewrite
+        urlRewrite:
+          path:
+            type: ReplacePrefixMatch
+            replacePrefixMatch: /
+  - backendRefs:
+    - name: {{ .Release.Name }}-identity
+      port: 8264
+    matches:
+    - path:
+        type: PathPrefix
+        value: /identity
+    filters:
+      - type: URLRewrite
+        urlRewrite:
+          path:
+            type: ReplacePrefixMatch
+            replacePrefixMatch: /
+  - backendRefs:
+    - name: {{ .Release.Name }}
+      port: 5264
+{{- end }}
