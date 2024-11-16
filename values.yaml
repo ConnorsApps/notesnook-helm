@@ -231,11 +231,11 @@ secret:
     type: secret
     data:
       NOTESNOOK_SERVER_PORT: "5264"
-      NOTESNOOK_SERVER_HOST: "{{ .Release.Name }}.svc.cluster.local"
+      NOTESNOOK_SERVER_HOST: "{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local"
       IDENTITY_SERVER_PORT: "8264"
-      IDENTITY_SERVER_HOST: "{{ .Release.Name }}-identity.svc.cluster.local"
+      IDENTITY_SERVER_HOST: "{{ .Release.Name }}-identity.{{ .Release.Namespace }}.svc.cluster.local"
       SSE_SERVER_PORT: "7264"
-      SSE_SERVER_HOST: "{{ .Release.Name }}-sse.svc.cluster.local"
+      SSE_SERVER_HOST: "{{ .Release.Name }}-sse.{{ .Release.Namespace }}.svc.cluster.local"
       SELF_HOSTED: "1"
       IDENTITY_SERVER_URL: "https://{{ .Values.httpRoute.hostname }}/identity"
       NOTESNOOK_APP_HOST: "https://{{ .Values.httpRoute.hostname }}"
@@ -260,13 +260,13 @@ secret:
     enabled: true
     type: secret
     data:
-      MONGODB_CONNECTION_STRING: 'mongodb://notesnook:mongo-password@{{ .Release.Name }}-mongo-mongodb-headless.svc.cluster.local/notesnook-identity?authSource=notesnook-identity'
+      MONGODB_CONNECTION_STRING: 'mongodb://notesnook:mongo-password@{{ .Release.Name }}-mongo-mongodb-headless.{{ .Release.Namespace }}.svc.cluster.local/notesnook-identity?authSource=notesnook-identity'
       MONGODB_DATABASE_NAME: notesnook-identity
   main-server-env:
     enabled: true
     type: secret
     data:  
-      MONGODB_CONNECTION_STRING: 'mongodb://notesnook:mongo-password@{{ .Release.Name }}-mongo-mongodb-headless.svc.cluster.local/notesnook?authSource=notesnook&readPreference=secondaryPreferred'
+      MONGODB_CONNECTION_STRING: 'mongodb://notesnook:mongo-password@{{ .Release.Name }}-mongo-mongodb-headless.{{ .Release.Namespace }}.svc.cluster.local/notesnook?authSource=notesnook&readPreference=secondaryPreferred'
       MONGODB_DATABASE_NAME: notesnook
       S3_INTERNAL_SERVICE_URL: "https://minio-api.domain.com"
       S3_INTERNAL_BUCKET_NAME: "notesnook"
